@@ -160,7 +160,7 @@ nf = 0;
 % chif=-3/4*pi;
 % gammaf=-3*pi/180;
 
-%% 3. STATES DATA:
+%% 3. STATES DATA
 % 3.1 ICs (& ICs bounds)
 % 3.2 Bounds
 % 3.3 Rate bounds
@@ -333,9 +333,9 @@ problem.sim.inputU=1:length(problem.inputs.ul);
 problem.functions_unscaled={@L_unscaled,@E_unscaled,@f_unscaled,@g_unscaled,@avrc,@b_unscaled};
 problem.data.functions_unscaled=problem.functions_unscaled;
 problem.data.ng_eq=problem.constraints.ng_eq;
-problem.constraintErrorTol=[problem.constraints.gTol_eq,problem.constraints.gTol_neq,problem.constraints.gTol_eq,problem.constraints.gTol_neq,problem.states.xConstraintTol,problem.states.xConstraintTol,problem.inputs.uConstraintTol,problem.inputs.uConstraintTol];
-% errors organized as: [path constraints (eq, neq) upper bound, path constraints (eq, neq) lower bound, state upper bound, state lower bound, input upper bound, input lower bound]
-%                                                               (or something similar to that)
+% Order: [path constraints (eq+neq) upper bound, path constraints (eq+neq) lower bound, state upper bound, state lower bound, input upper bound, input lower bound]
+problem.constraintErrorTol=[problem.constraints.gTol_eq,problem.constraints.gTol_neq,problem.constraints.gTol_eq,problem.constraints.gTol_neq,...
+    problem.states.xConstraintTol,problem.states.xConstraintTol,problem.inputs.uConstraintTol,problem.inputs.uConstraintTol];
 
 
 function stageCost=L_unscaled(x,xr,u,ur,p,t,data)
@@ -370,10 +370,8 @@ auxdata = data.auxdata;
 n = x(:,1);
 alpha = u(:,1);
 
-stageCost = (1 - n.*auxdata.trackInterp.C(t))./(auxdata.V.*cos(alpha)); % dt/ds
 % stageCost = 0*t;
-
-%------------- END OF CODE --------------
+stageCost = (1 - n.*auxdata.trackInterp.C(t))./(auxdata.V.*cos(alpha)); % dt/ds
 
 
 function boundaryCost=E_unscaled(x0,xf,u0,uf,p,t0,tf,data) 
@@ -397,10 +395,8 @@ function boundaryCost=E_unscaled(x0,xf,u0,uf,p,t0,tf,data)
 %
 %------------- BEGIN CODE --------------
 
-boundaryCost = 0;
 % boundaryCost= tf;
-
-%------------- END OF CODE --------------
+boundaryCost = 0;
 
 
 function bc=b_unscaled(x0,xf,u0,uf,p,t0,tf,vdat,varargin)
@@ -442,6 +438,4 @@ if length(varargin)==2
         end
     end
 end
-
-%------------- END OF CODE --------------
 
