@@ -4,7 +4,7 @@ function [dx,g_neq] = LTS_dynamics(x,u,p,t,data)
 % David Izquierdo
 % 
 % FUNCTION: 
-% (explain main functions)
+% Compute the derivatives of the state variables and the valus of the path constraints
 % 
 % SYNTAX:  
 % [dx] = Dynamics(x,u,p,t,data)	(Dynamics Only)
@@ -34,20 +34,39 @@ function [dx,g_neq] = LTS_dynamics(x,u,p,t,data)
 %% 0. UNFOLD INPUTS
 auxdata = data.auxdata;
 
-n = x(:,1);
-alpha = u(:,1);
-% H = x(:,1);
-% npos = x(:,2);
-% epos = x(:,3);
-% V_tas = x(:,4);
-% gamma = x(:,5);
-% chi = x(:,6);
-% W = x(:,7);
-% alpha = u(:,1);
-% phi = u(:,2);
-% throttle = u(:,3);
+s = x(:,1); % "s" is the TIME and "t" is the CENTRELINE POSITION (to keep the convention of "t" -> integration variable)
+n = x(:,2);
+xi = x(:,3);
+u = x(:,4);
+v = x(:,5);
+omega = x(:,6);
+
+delta = u(:,1);
+theta_t = u(:,2);
+theta_b = u(:,3);
 
 %% 1. PREPARE VARIABLES
+% 1.1 Calculate forces at the tyres
+% Weight distribution
+% Static
+F.fr.static = auxdata.W.*auxdata.b/auxdata.w/2;
+F.fl.static = F.fr.static;
+F.rr.static = auxdata.W.*auxdata.a/auxdata.w/2;
+F.rl.static = F.rr.static;
+
+% Tractive
+% Fxr_t = theta_t.*auxdata.Teng_max.*auxdata.R;
+
+% Braking
+% 
+
+% Tyres
+mu_xmax = interp1(x,v,xq,'linear','extrap');
+
+% 1.2 Calculate aerodynamic forces
+Faz = 1/2.*auxdata.rho.*auxdata.ClA.*(u.^2 + v.^2);
+Fax = -1/2.*auxdata.rho.*auxdata.CdA.*(u.^2 + v.^2);
+
 % Temp=auxdata.Ts+H*auxdata.dTdH;
 % pressure=auxdata.ps*(Temp./auxdata.Ts).^(-auxdata.g/auxdata.dTdH/auxdata.R);
 % rho=auxdata.rhos*(Temp./auxdata.Ts).^(-(auxdata.g/auxdata.dTdH/auxdata.R+1));

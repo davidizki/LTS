@@ -31,7 +31,6 @@ options=problem.settings(30); % Get options and solver settings. 60 -> h-method 
 
 [simulation.tv,simulation.xv,simulation.uv] = simulateSolution(problem,solution,'ode113'); % Check the model in open loop
 
-
 %% 2. POST-PROCESSING
 % 1. Summary Messages
 disp(problem.constraintErrorTol); % show maximum allowed constraint violation
@@ -61,39 +60,42 @@ plotparam.Nnodes = length(data_finalMR.options.tau);
 plotparam.formattype = strcat('-dpng'); % .png
 plotparam.resolution = strcat('-r350'); % -fillpage. Increase the number for higher quality
 plotparam.showfigs = 0;
-plotparam.savefigs = 1;
+plotparam.savefigs = 0;
 
-% 3. Default Plots
-[plotparam] = genSolutionPlots(options,solution,plotparam); % Built-in figure generation (check settings for the type of plots to be generated)
-
-
-% 4. Track Post-processing
-if options.plot_track
-    [plotparam] = LTS_trackPostprocessor(problem.data.auxdata.trackData,problem.data.auxdata.trackInterp,...
-        plotvar,plotparam); % Trajectory in (x,y) coords
-end
-
-
-% 5. ... more Post-processing
-
-
-% 6. Show and Save Figures
-if plotparam.showfigs % show figures
-    for ii = 1:plotparam.Nfigures
-        set(plotparam.F(ii),'visible','on');
+if plotparam.showfigs || plotparam.savefigs % skip figures generation if no show & no save
+    
+    % 3. Default Plots
+    [plotparam] = genSolutionPlots(options,solution,plotparam); % Built-in figure generation (check settings for the type of plots to be generated)
+    
+    % 4. Track Post-processing
+    if options.plot_track
+        [plotparam] = LTS_trackPostprocessor(problem.data.auxdata.trackData,problem.data.auxdata.trackInterp,...
+            plotvar,plotparam); % Trajectory in (x,y) coords
     end
+    
+    % 5. ... more Post-processing
+    
+    % 6. Show and Save Figures
+    if plotparam.showfigs % show figures
+        for ii = 1:plotparam.Nfigures
+            set(plotparam.F(ii),'visible','on');
+        end
+    end
+    
+    if plotparam.savefigs % save figures
+        mkdir(datestr(datetime,'yyyy-mm-dd HH.MM.SS'));
+        cd(datestr(datetime,'yyyy-mm-dd HH.MM.SS'));
+        for ii = 1:plotparam.Nfigures
+            set(0,'currentfigure',plotparam.F(ii)); pause(0.05);
+            print(sprintf('fig_%d_%s',ii,plotparam.Fnames(ii)),plotparam.formattype,plotparam.resolution);
+        end
+        cd ..
+    end
+    clear ii
+    
 end
 
-if plotparam.savefigs % save figures
-    mkdir(datestr(datetime,'yyyy-mm-dd HH.MM.SS'));
-    cd(datestr(datetime,'yyyy-mm-dd HH.MM.SS'));
-    for ii = 1:plotparam.Nfigures
-        set(0,'currentfigure',plotparam.F(ii)); pause(0.05);
-        print(sprintf('fig_%d_%s',ii,plotparam.Fnames(ii)),plotparam.formattype,plotparam.resolution);
-    end
-    cd ..
-end
-clear ii
+set(0, 'DefaultFigureVisible', 'on') % leave it active as default for other files
 
 % 
 % xx=linspace(solution.T(1,1),solution.tf,1000);
@@ -242,4 +244,3 @@ clear ii
 % xlabel('Time [s]')
 % ylabel('Throttle Setting (Control) [-]')
 % grid on
-
