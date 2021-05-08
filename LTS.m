@@ -43,7 +43,7 @@ problem.settings=@LTS_settings;
 % Load data from input Excel file
 % Vars input
 Nstates = 6;
-Ncontrols = 3;
+Ncontrols = 5;
 Nvars = Nstates + Ncontrols;
 Nfields = 17;
 numericsInput = readmatrix('LTS_inputData.xlsx','sheet','numericsInput');
@@ -83,11 +83,16 @@ for ii = 1:length(tyresInput_fieldnames)
     auxdata.(tyresInput_fieldnames(ii)) = tyresInput_fieldvalues(ii);
 end
 
+% Interpolants for maximum coefficients
+auxdata.mux_max_interp = griddedInterpolant([auxdata.Fz1 auxdata.Fz2],[auxdata.mux_1 auxdata.mux_2],'linear','linear');
+auxdata.muy_max_interp = griddedInterpolant([auxdata.Fz1 auxdata.Fz2],[auxdata.muy_1 auxdata.muy_2],'linear','linear');
+auxdata.kappa_max_interp = griddedInterpolant([auxdata.Fz1 auxdata.Fz2],[auxdata.kappa_1 auxdata.kappa_2],'linear','linear');
+auxdata.alpha_max_interp = griddedInterpolant([auxdata.Fz1 auxdata.Fz2],[auxdata.alpha_1 auxdata.alpha_2],'linear','linear');
+
 % % Thrust model
 % x=[0 0.5 1];
 % y=[0 0.48 1];
 % FFModel=pchip(x,y);
-
 
 %% 2. TIME INFORMATION (track centreline coordinate information)
 t0 = 0;
@@ -197,19 +202,22 @@ problem.setpoints.inputs=[];
 
 % Bounds for path constraint function gl =< g(x,u,p,t) =< gu
 % 6.1 EQUALITY CONSTRAINTS (no bounds, since it is just equality)
-problem.constraints.ng_eq=0;
-problem.constraints.gTol_eq=[];
+problem.constraints.ng_eq = 2; % number of equality constraints
+problem.constraints.gTol_eq = [0 0];
 
 % 6.2 INEQUALITY CONSTRAINTS
-problem.constraints.gl=[]; % g cannot take values lower than zero
-problem.constraints.gu=[];
-problem.constraints.gTol_neq=[]; % tolerance for each g
+problem.constraints.gl=[0 0 0]; % g cannot take values lower than zero
+problem.constraints.gu=[inf inf inf]; % one-sided constraints
+problem.constraints.gTol_neq=[1 1 1]; % tolerance for each g
 
 % 6.3 BOUNDARY CONSTRAINTS
 % Bounds for boundary constraints bl =< b(x0,xf,u0,uf,p,t0,tf) =< bu
 problem.constraints.bl = zeros(1,Nvars);
 problem.constraints.bu = zeros(1,Nvars);
-problem.constraints.bTol = numericsInput(Nstates+1:Nvars,17).';
+problem.constraints.bTol = numericsInput(:,17).';
+% problem.constraints.bl = [];
+% problem.constraints.bu = [];
+% problem.constraints.bTol = [];
 
 %% 7. OUTPUT FOLDING
 % store the necessary problem parameters used in the functions
@@ -260,11 +268,13 @@ function stageCost=L_unscaled(x,xr,u,ur,p,t,data)
 %------------- BEGIN CODE --------------
 
 auxdata = data.auxdata;
-n = x(:,1);
-alpha = u(:,1);
+n = x(:,2);
+xi = x(:,3);
+u = x(:,4);
+v = x(:,5);
 
 % stageCost = 0*t;
-stageCost = (1 - n.*auxdata.trackInterp.C(t))./(auxdata.V.*cos(alpha)); % dt/ds
+stageCost = (1 - n.*auxdata.trackInterp.C(t))./(u.*cos(xi) - v.*sin(xi)); % ds/dt (dt/ds in Perantoni)
 
 
 function boundaryCost=E_unscaled(x0,xf,u0,uf,p,t0,tf,data) 
@@ -322,6 +332,7 @@ end
 for ii = 1:length(u0)
     bc(length(x0)+ii,:) = [u0(ii)-uf(ii)];
 end
+% bc = [];
 
 %------------- END OF CODE --------------
 % When adpative time interval add constraint on time

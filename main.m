@@ -26,7 +26,7 @@ set(groot,'defaultLegendInterpreter','latex');
 
 %% 1. OPTIMAL CONTROL PROBLEM
 [problem,guess] = LTS; % Fetch the problem definition
-options=problem.settings(30); % Get options and solver settings. 60 -> h-method with N=60 nodes
+options = problem.settings(200); % Get options and solver settings. 60 -> h-method with N=60 nodes
 [solution,MRHistory,data_initial,data_finalMR] = solveMyProblem(problem,guess,options); % Solve the OCP
 
 [simulation.tv,simulation.xv,simulation.uv] = simulateSolution(problem,solution,'ode113'); % Check the model in open loop

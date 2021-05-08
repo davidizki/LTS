@@ -1,4 +1,4 @@
-function [dx,g_neq] = LTS_dynamics(x,u,p,t,data)
+function [dx,g_eq,g_neq] = LTS_dynamics(x,u,p,t,data)
 %% LTS_dynamics
 % AUTHOR:
 % David Izquierdo
@@ -33,6 +33,8 @@ function [dx,g_neq] = LTS_dynamics(x,u,p,t,data)
 
 %% 0. UNFOLD INPUTS
 auxdata = data.auxdata;
+u_controls = u; % to avoid naming conflict
+refsize = ones(size(x(:,1)));
 
 s = x(:,1); % "s" is the TIME and "t" is the CENTRELINE POSITION (to keep the convention of "t" -> integration variable)
 n = x(:,2);
@@ -41,66 +43,120 @@ u = x(:,4);
 v = x(:,5);
 omega = x(:,6);
 
-delta = u(:,1);
-theta_t = u(:,2);
-theta_b = u(:,3);
+delta = u_controls(:,1);
+% kappas are unfolded later on
 
-%% 1. PREPARE VARIABLES
-% 1.1 Calculate forces at the tyres
-% Weight distribution
-% Static
-F.fr.static = auxdata.W.*auxdata.b/auxdata.w/2;
-F.fl.static = F.fr.static;
-F.rr.static = auxdata.W.*auxdata.a/auxdata.w/2;
-F.rl.static = F.rr.static;
+%% 1.a TYRES NORMAL FORCES
+% NOTATION: 1-2-3-4 == fr-fl-rr-rl
+% 1.a.i Static weight distribution
+tyres.Fz_static(:,1) = auxdata.W.*auxdata.b/auxdata.w/2.*refsize;
+tyres.Fz_static(:,2) = tyres.Fz_static(:,1);
+tyres.Fz_static(:,3) = auxdata.W.*auxdata.a/auxdata.w/2.*refsize;
+tyres.Fz_static(:,4) = tyres.Fz_static(:,3);
 
-% Tractive
-% Fxr_t = theta_t.*auxdata.Teng_max.*auxdata.R;
+% 1.a.ii Load transfers
 
-% Braking
-% 
+% 1.a.iii Calculate aerodynamic forces
+Df = 1/2.*auxdata.rho.*auxdata.ClA.*(u.^2 + v.^2);
+D = -1/2.*auxdata.rho.*auxdata.CdA.*(u.^2 + v.^2);
 
+tyres.Fz_aero(:,1) = Df.*auxdata.bA/auxdata.w/2.*refsize;
+tyres.Fz_aero(:,2) = tyres.Fz_aero(:,1);
+tyres.Fz_aero(:,3) = Df.*auxdata.aA/auxdata.w/2.*refsize;
+tyres.Fz_aero(:,4) = tyres.Fz_aero(:,3);
+
+% Collect all forces
+tyres.Fz = tyres.Fz_static + tyres.Fz_aero;
+
+%% 1.b TYRES FRICTION FORCES
 % Tyres
-mu_xmax = interp1(x,v,xq,'linear','extrap');
+% Maximum coefficients
+tyres.mux_max = auxdata.mux_max_interp(tyres.Fz);
+tyres.muy_max = auxdata.muy_max_interp(tyres.Fz);
+tyres.kappa_max = auxdata.kappa_max_interp(tyres.Fz);
+tyres.alpha_max = auxdata.alpha_max_interp(tyres.Fz);
 
-% 1.2 Calculate aerodynamic forces
-Faz = 1/2.*auxdata.rho.*auxdata.ClA.*(u.^2 + v.^2);
-Fax = -1/2.*auxdata.rho.*auxdata.CdA.*(u.^2 + v.^2);
+% Slip ratios -> Directly from controls
+tyres.kappa(:,1) = u_controls(:,2);
+tyres.kappa(:,2) = u_controls(:,3);
+tyres.kappa(:,3) = u_controls(:,4);
+tyres.kappa(:,4) = u_controls(:,5);
 
-% Temp=auxdata.Ts+H*auxdata.dTdH;
-% pressure=auxdata.ps*(Temp./auxdata.Ts).^(-auxdata.g/auxdata.dTdH/auxdata.R);
-% rho=auxdata.rhos*(Temp./auxdata.Ts).^(-(auxdata.g/auxdata.dTdH/auxdata.R+1));
-% [ V_cas ] = CAS2TAS( auxdata.kappa, pressure, rho, auxdata.ps, auxdata.rhos, V_tas );
+% Slip angles
+tyres.alpha(:,1) = atan2(sin(delta).*(omega.*auxdata.wf - u) + cos(delta).*(omega.*auxdata.a + v),...
+    cos(delta).*(u - omega.*auxdata.wf) + sin(delta).*(omega.*auxdata.a + v));
+tyres.alpha(:,2) = atan2(cos(delta).*(omega.*auxdata.a + v) - sin(delta).*(omega.*auxdata.wf + u),...
+    cos(delta).*(u + omega.*auxdata.wf) + sin(delta).*(omega.*auxdata.a + v));
+tyres.alpha(:,3) = atan2(v - omega.*auxdata.b, u - omega*auxdata.wr);
+tyres.alpha(:,4) = atan2(v - omega.*auxdata.b, u + omega*auxdata.wr);
+
+% Spin speeds (from slip ratios)
+tyres.spin(:,1) = -(tyres.kappa(:,1) + 1).*(cos(delta).*(u - omega.*auxdata.wf) + sin(delta).*(v + omega.*auxdata.a))/auxdata.R;
+tyres.spin(:,2) = -(tyres.kappa(:,2) + 1).*(cos(delta).*(u + omega.*auxdata.wf) + sin(delta).*(v + omega.*auxdata.a))/auxdata.R;
+tyres.spin(:,3) = -(tyres.kappa(:,3) + 1).*(u - omega.*auxdata.wr)/auxdata.R;
+tyres.spin(:,4) = -(tyres.kappa(:,4) + 1).*(u + omega.*auxdata.wr)/auxdata.R;
+
+% Normalized slip angles and slip ratios
+tyres.kappa_n = tyres.kappa./tyres.kappa_max;
+tyres.alpha_n = tyres.alpha./tyres.alpha_max;
+
+tyres.rho = sqrt(tyres.kappa_n.^2 + tyres.alpha_n.^2);
+
+% Friction coefficients
+tyres.mux = tyres.mux_max.*sin(auxdata.Qx.*atan2(pi.*tyres.rho,2.*atan(auxdata.Qx)));
+tyres.muy = tyres.muy_max.*sin(auxdata.Qy.*atan2(pi.*tyres.rho,2.*atan(auxdata.Qy)));
+
+% Friction forces
+tyres.Fx = tyres.mux.*tyres.Fz.*tyres.kappa_n./tyres.rho;
+tyres.Fy = tyres.muy.*tyres.Fz.*tyres.alpha_n./tyres.rho;
+
+tyres.Fx(isnan(tyres.Fx)) = 0; % to avoid errors when rho=0 at a given tyre
+tyres.Fy(isnan(tyres.Fy)) = 0;
+
+% Total forces in car body-fixed reference frame
+tyres.Fx_tot = cos(delta).*(tyres.Fx(:,1) + tyres.Fx(:,2)) - sin(delta).*(tyres.Fy(:,1) + tyres.Fy(:,2)) + ...
+    tyres.Fx(:,3) + tyres.Fx(:,4) + D;
+tyres.Fy_tot = cos(delta).*(tyres.Fy(:,1) + tyres.Fy(:,2)) + sin(delta).*(tyres.Fx(:,1) + tyres.Fx(:,2)) + ...
+    tyres.Fy(:,3) + tyres.Fy(:,4);
+
+% Tractive and braking forces are fixed by kappas control
+% Tractive forces
+% Fxr_t = theta_t.*auxdata.Teng_max./auxdata.R;
+% Braking forces
 % 
-% ap=auxdata.a1p.*V_cas.^2+auxdata.a2p.*V_cas+auxdata.a3p;
-% bp=auxdata.b1p.*V_cas.^2+auxdata.b2p.*V_cas+auxdata.b3p;
-% cp=auxdata.c1p.*V_cas.^2+auxdata.c2p.*V_cas+auxdata.c3p;
-% Pmax=ap.*H.^2+bp.*H+cp;
-% 
-% P=(Pmax-auxdata.Pidle).*throttle+auxdata.Pidle;
-% J=60*V_tas/auxdata.nprop/auxdata.Dprop;
-% ita=-0.13289*J.^6+1.2536*J.^5-4.8906*J.^4+10.146*J.^3-11.918*J.^2+7.6740*J-1.3452;
-% Thrust=2*745.6*ita.*P./V_tas;
-% 
-% % Calculate aerodynamic forces
-% cl=auxdata.clalpha.*(alpha-auxdata.alpha0)*180/pi;
-% L=0.5.*cl.*rho.*V_tas.^2.*auxdata.S;
-% cd=auxdata.cd0+auxdata.k_cd*cl.^2;
-% Drag=0.5.*cd.*rho.*V_tas.^2.*auxdata.S;
 
 %% 2. EOMs - EQUATIONS OF MOTION
-n_dot = (1 - n.*auxdata.trackInterp.C(t)).*tan(alpha);
-% TAS_dot=(Thrust-Drag-W.*sin(gamma)).*auxdata.g./W;
-% gamma_dot=(L.*cos(phi)+Thrust*sin(auxdata.alphat)-W.*cos(gamma))*auxdata.g./W./V_tas;
-% H_dot=V_tas.*sin(gamma);
-% x_dot=V_tas.*cos(gamma).*cos(chi);
-% y_dot=V_tas.*cos(gamma).*sin(chi);
-% chi_dot=L.*sin(phi)./cos(gamma)*auxdata.g./W./V_tas;
-% W_dot= calcWeight(V_cas,H,throttle,auxdata.FFModel);
+% t_dot = (u.*cos(xi) - v.*sin(xi))./(1 - n.*auxdata.trackInterp.C(t)); % == 1/Sf == dt/ds (== ds/dt in Perantoni notation)
+Sf = (1 - n.*auxdata.trackInterp.C(t))./(u.*cos(xi) - v.*sin(xi));
+n_dot = u.*sin(xi) + v.*cos(xi);
+xi_dot = omega - auxdata.trackInterp.C(t)./Sf;
+u_dot = omega.*v + tyres.Fx_tot/auxdata.M;
+v_dot = -omega.*u + tyres.Fy_tot/auxdata.M;
+Iz_omega_dot = auxdata.a.*(cos(delta).*(tyres.Fy(:,1) + tyres.Fy(:,2)) + sin(delta).*(tyres.Fx(:,1) + tyres.Fx(:,2))) + ...
+    auxdata.wf.*(sin(delta).*tyres.Fy(:,1) - cos(delta).*tyres.Fx(:,1)) + ...
+    auxdata.wf.*(-sin(delta).*tyres.Fy(:,2) + cos(delta).*tyres.Fx(:,2)) + ...
+    -auxdata.wr.*tyres.Fx(:,3) + auxdata.wr.*tyres.Fx(:,4) - auxdata.b.*(tyres.Fy(:,3) + tyres.Fy(:,4));
+omega_dot = Iz_omega_dot./auxdata.Iz;
+
+dtdt = 1.*refsize;
+dndt = n_dot.*Sf; % derivatives with respect to centreline coordinate (dnds in Perantoni notation)
+dxidt = xi_dot.*Sf;
+dudt = u_dot.*Sf;
+dvdt = v_dot.*Sf;
+domegadt = omega_dot.*Sf;
+
 
 %% 3. CONSTRAINTS
-c1 = n + auxdata.track_N; % cannot be lower than zero
-c2 = -n + auxdata.track_N; % cannot be lower than zero
+% c1 = n + auxdata.track_N; % cannot be lower than zero % ENFORCED VIA n VARIABLE BOUNDS
+% c2 = -n + auxdata.track_N; % cannot be lower than zero % ENFORCED VIA n VARIABLE BOUNDS
+
+g1 = tyres.Fx(:,3) - tyres.Fx(:,4); % rear longitudinal forces must be the same -both if braking or if accelerating
+g2 = tyres.Fx(:,1) - tyres.Fx(:,2); % front longitudinal forces
+
+h1 = tyres.Fx(:,3) + tyres.Fx(:,4) - auxdata.Teng_max/auxdata.R; % tyres forces - engine max force <= 0 (tyres <= engine max)
+h2 = -(tyres.Fx(:,1) + tyres.Fx(:,2)) - auxdata.Fbrk_max.*auxdata.kbb; % (front) tyres - brakes <= 0 (tyres <= brakes)
+h3 = -(tyres.Fx(:,3) + tyres.Fx(:,4)) - auxdata.Fbrk_max.*(1-auxdata.kbb); % (rear) tyres - brakes <= 0 (tyres <= brakes)
+
 % c1=(npos-data.auxdata.obs_npos_1).^2+(epos-data.auxdata.obs_epos_1).^2-data.auxdata.obs_r_1.^2;
 % c2=(npos-data.auxdata.obs_npos_2).^2+(epos-data.auxdata.obs_epos_2).^2-data.auxdata.obs_r_2.^2;
 % c3=(npos-data.auxdata.obs_npos_3).^2+(epos-data.auxdata.obs_epos_3).^2-data.auxdata.obs_r_3.^2;
@@ -113,7 +169,6 @@ c2 = -n + auxdata.track_N; % cannot be lower than zero
 % c10=(npos-data.auxdata.obs_npos_10).^2+(epos-data.auxdata.obs_epos_10).^2-data.auxdata.obs_r_10.^2;
 
 %% 4. OUTPUTS
-dx = [n_dot];
-g_neq=[c1,c2];
-% dx = [H_dot, x_dot, y_dot, TAS_dot, gamma_dot, chi_dot, W_dot];
-% g_neq=[c1,c2,c3,c4,c5,c6,c7,c8,c9,c10]/1e04;
+dx = [dtdt dndt dxidt dudt dvdt domegadt];
+g_eq = [g1 g2]; % [0 0].*refsize;
+g_neq = [h1 h2 h3]; % [0 0 0].*refsize;
