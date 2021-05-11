@@ -61,7 +61,7 @@ numericsInput = numericsInput(1:Nvars,6:(6+Nfields-1)); % 6 is due to the first 
 % Track input
 trackInput = readmatrix('LTS_inputData.xlsx','sheet','trackInput'); %,'OutputType','string');
 trackInput = trackInput(:,2);
-auxdata.track_name = "Track04"; % Name of the folder (and the .txt file)
+auxdata.track_name = "Track03"; % Name of the folder (and the .txt file)
 auxdata.track_N = trackInput(1,1); % [m] semi-width -note that minimum TOTAL track width in FSG is 3 m-
 [auxdata.trackInterp, auxdata.trackData] = LTS_trackGenerator(auxdata.track_name,auxdata.track_N);
 
@@ -153,12 +153,6 @@ guess.time(:,1) = linspace(t0,tf,100);
 % guess.states = interpolant_guess_states(guess.time);
 for ii = 1:Nstates
     guess.states(:,ii) = interp1([t0 tf],numericsInput(ii,15:16),guess.time);
-    if ii == 3 % use track orientation as guess for xi
-        guess.inputs(:,ii) = auxdata.trackInterp.theta(guess.time);
-    end
-%     if ii == 6
-%         guess.inputs(:,ii) = 
-%     end
 end
 
 %% 4. CONTROLS DATA
@@ -204,9 +198,6 @@ problem.inputs.u0u = numericsInput(Nstates+1:Nvars,11).';
 
 for ii = 1:Ncontrols
     guess.inputs(:,ii) = interp1([t0 tf],numericsInput(Nstates+ii,15:16),guess.time);
-    if ii == 1 % use Ackermann as guess for delta
-        guess.inputs(:,ii) = atan(auxdata.trackInterp.C(guess.time).*auxdata.w);
-    end
 end
 
 %% 5. PARAMETERS DATA

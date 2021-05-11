@@ -170,5 +170,5 @@ h3 = -(tyres.Fx(:,3) + tyres.Fx(:,4)) - auxdata.Fbrk_max.*(1-auxdata.kbb); % (re
 
 %% 4. OUTPUTS
 dx = [dsdt dndt dxidt dudt dvdt domegadt];
-g_eq = [0 0].*refsize; % [0 0].*refsize; // [g1 g2];
-g_neq = [0 0 0].*refsize; % [0 0 0].*refsize; // % [h1 h2 h3];
+g_eq = [0 0].*refsize; % [g1 g2];
+g_neq = [0 0 0].*refsize; % [h1 h2 h3];
