@@ -89,6 +89,7 @@ tyres.alpha(:,2) = atan2(cos(delta).*(omega.*auxdata.a + v) - sin(delta).*(omega
     cos(delta).*(u + omega.*auxdata.wf) + sin(delta).*(omega.*auxdata.a + v));
 tyres.alpha(:,3) = atan2(v - omega.*auxdata.b, u - omega*auxdata.wr);
 tyres.alpha(:,4) = atan2(v - omega.*auxdata.b, u + omega*auxdata.wr);
+tyres.alpha = rad2deg(tyres.alpha);
 
 % Spin speeds (from slip ratios and kinematics)
 tyres.spin(:,1) = -(tyres.kappa(:,1) + 1).*(cos(delta).*(u - omega.*auxdata.wf) + sin(delta).*(v + omega.*auxdata.a))/auxdata.R;

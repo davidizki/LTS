@@ -152,7 +152,12 @@ options.NLPsolver='ipopt';
 
 % IPOPT settings (if required)
 %---------------------------------------
-options.ipopt.tol=1e-7;                        % Desired convergence tolerance (relative). The default value is  1e-8. 
+options.ipopt.tol=1e-7; %1e-7;                        % Desired convergence tolerance (relative). The default value is  1e-8.
+% Determines the convergence tolerance for the algorithm. The algorithm terminates successfully, if the (scaled) NLP error becomes
+% smaller than this value, and if the (absolute) criteria according to "dual_inf_tol", "constr_viol_tol", and "compl_inf_tol" are met.
+% (This is epsilon_tol in Eqn. (6) in implementation paper). See also "acceptable_tol" as a second termination criterion. Note, some
+% other algorithmic features also use this quantity to determine thresholds etc.
+
 options.ipopt.print_level=5;                   % Print level. The valid range for this integer option is [0,12] and its default value is 5.
 options.ipopt.max_iter=200;                   % Maximum number of iterations. The default value is 3000.
  
