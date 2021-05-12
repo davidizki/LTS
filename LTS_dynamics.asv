@@ -89,6 +89,7 @@ tyres.alpha(:,2) = atan2(cos(delta).*(omega.*auxdata.a + v) - sin(delta).*(omega
     cos(delta).*(u + omega.*auxdata.wf) + sin(delta).*(omega.*auxdata.a + v));
 tyres.alpha(:,3) = atan2(v - omega.*auxdata.b, u - omega*auxdata.wr);
 tyres.alpha(:,4) = atan2(v - omega.*auxdata.b, u + omega*auxdata.wr);
+tyres.alpha = rad2deg(tyres.alpha);
 
 % Spin speeds (from slip ratios and kinematics)
 tyres.spin(:,1) = -(tyres.kappa(:,1) + 1).*(cos(delta).*(u - omega.*auxdata.wf) + sin(delta).*(v + omega.*auxdata.a))/auxdata.R;
@@ -125,18 +126,28 @@ tyres.Fy_tot = cos(delta).*(tyres.Fy(:,1) + tyres.Fy(:,2)) + sin(delta).*(tyres.
 % Braking forces
 % 
 
+% REDUCED MODEL
+tyres.Fy_tot = delta.*(auxdata.W + Df).*auxdata.mux_2;
+tyres.Fx_tot = u_controls(:,2).*1e3;
+
 %% 2. EOMs - EQUATIONS OF MOTION
 % t_dot = (u.*cos(xi) - v.*sin(xi))./(1 - n.*auxdata.trackInterp.C(t)); % == 1/Sf == dt/ds (== ds/dt in Perantoni notation)
-Sf = (1 - n.*auxdata.trackInterp.C(t))./(u.*cos(xi) - v.*sin(xi));
-n_dot = u.*sin(xi) + v.*cos(xi);
-xi_dot = omega - auxdata.trackInterp.C(t)./Sf;
-u_dot = omega.*v + tyres.Fx_tot/auxdata.M;
-v_dot = -omega.*u + tyres.Fy_tot/auxdata.M;
-Iz_omega_dot = auxdata.a.*(cos(delta).*(tyres.Fy(:,1) + tyres.Fy(:,2)) + sin(delta).*(tyres.Fx(:,1) + tyres.Fx(:,2))) + ...
-    auxdata.wf.*(sin(delta).*tyres.Fy(:,1) - cos(delta).*tyres.Fx(:,1)) + ...
-    auxdata.wf.*(-sin(delta).*tyres.Fy(:,2) + cos(delta).*tyres.Fx(:,2)) + ...
-    -auxdata.wr.*tyres.Fx(:,3) + auxdata.wr.*tyres.Fx(:,4) - auxdata.b.*(tyres.Fy(:,3) + tyres.Fy(:,4));
-omega_dot = Iz_omega_dot./auxdata.Iz;
+
+% Sf = (1 - n.*auxdata.trackInterp.C(t))./(u.*cos(xi) - v.*sin(xi));
+% n_dot = u.*sin(xi) + v.*cos(xi);
+% % xi_dot = omega - auxdata.trackInterp.C(t)./Sf;
+% u_dot = omega.*v + tyres.Fx_tot/auxdata.M;
+% v_dot = -omega.*u + tyres.Fy_tot/auxdata.M;
+% Iz_omega_dot = auxdata.a.*(cos(delta).*(tyres.Fy(:,1) + tyres.Fy(:,2)) + sin(delta).*(tyres.Fx(:,1) + tyres.Fx(:,2))) + ...
+%     auxdata.wf.*(sin(delta).*tyres.Fy(:,1) - cos(delta).*tyres.Fx(:,1)) + ...
+%     auxdata.wf.*(-sin(delta).*tyres.Fy(:,2) + cos(delta).*tyres.Fx(:,2)) + ...
+%     -auxdata.wr.*tyres.Fx(:,3) + auxdata.wr.*tyres.Fx(:,4) - auxdata.b.*(tyres.Fy(:,3) + tyres.Fy(:,4));
+% omega_dot = Iz_omega_dot./auxdata.Iz;
+
+Sf = (1 - n.*auxdata.trackInterp.C(t))./u;
+n_dot = v;
+u_dot = tyres.Fx_tot/auxdata.M;
+v_dot = tyres.Fy_tot/auxdata.M;
 
 dsdt = 1.*refsize;
 dndt = n_dot.*Sf; % derivatives with respect to centreline coordinate (dnds in Perantoni notation)
@@ -157,18 +168,8 @@ h1 = tyres.Fx(:,3) + tyres.Fx(:,4) - auxdata.Teng_max/auxdata.R; % tyres forces 
 h2 = -(tyres.Fx(:,1) + tyres.Fx(:,2)) - auxdata.Fbrk_max.*auxdata.kbb; % (front) tyres - brakes <= 0 (tyres <= brakes)
 h3 = -(tyres.Fx(:,3) + tyres.Fx(:,4)) - auxdata.Fbrk_max.*(1-auxdata.kbb); % (rear) tyres - brakes <= 0 (tyres <= brakes)
 
-% c1=(npos-data.auxdata.obs_npos_1).^2+(epos-data.auxdata.obs_epos_1).^2-data.auxdata.obs_r_1.^2;
-% c2=(npos-data.auxdata.obs_npos_2).^2+(epos-data.auxdata.obs_epos_2).^2-data.auxdata.obs_r_2.^2;
-% c3=(npos-data.auxdata.obs_npos_3).^2+(epos-data.auxdata.obs_epos_3).^2-data.auxdata.obs_r_3.^2;
-% c4=(npos-data.auxdata.obs_npos_4).^2+(epos-data.auxdata.obs_epos_4).^2-data.auxdata.obs_r_4.^2;
-% c5=(npos-data.auxdata.obs_npos_5).^2+(epos-data.auxdata.obs_epos_5).^2-data.auxdata.obs_r_5.^2;
-% c6=(npos-data.auxdata.obs_npos_6).^2+(epos-data.auxdata.obs_epos_6).^2-data.auxdata.obs_r_6.^2;
-% c7=(npos-data.auxdata.obs_npos_7).^2+(epos-data.auxdata.obs_epos_7).^2-data.auxdata.obs_r_7.^2;
-% c8=(npos-data.auxdata.obs_npos_8).^2+(epos-data.auxdata.obs_epos_8).^2-data.auxdata.obs_r_8.^2;
-% c9=(npos-data.auxdata.obs_npos_9).^2+(epos-data.auxdata.obs_epos_9).^2-data.auxdata.obs_r_9.^2;
-% c10=(npos-data.auxdata.obs_npos_10).^2+(epos-data.auxdata.obs_epos_10).^2-data.auxdata.obs_r_10.^2;
 
 %% 4. OUTPUTS
-dx = [dsdt dndt dxidt dudt dvdt domegadt];
-g_eq = [0 0].*refsize; % [g1 g2];
-g_neq = [0 0 0].*refsize; % [h1 h2 h3];
+dx = [dsdt dndt dudt dvdt];
+g_eq = [0 0].*refsize; % [0 0].*refsize; // [g1 g2];
+g_neq = [0 0 0].*refsize; % [0 0 0].*refsize; // % [h1 h2 h3];
