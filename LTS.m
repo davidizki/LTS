@@ -42,8 +42,8 @@ problem.settings=@LTS_settings;
 %% 1. LOAD MODELS & CONSTANTS
 % Load data from input Excel file
 % Vars input
-Nstates = 6;
-Ncontrols = 5;
+Nstates = 4;
+Ncontrols = 2;
 Nvars = Nstates + Ncontrols;
 Nfields = 17;
 numericsInput = readmatrix('LTS_inputData.xlsx','sheet','numericsInput');
@@ -153,9 +153,9 @@ guess.time(:,1) = linspace(t0,tf,100);
 % guess.states = interpolant_guess_states(guess.time);
 for ii = 1:Nstates
     guess.states(:,ii) = interp1([t0 tf],numericsInput(ii,15:16),guess.time);
-    if ii == 3 % use track orientation as guess for xi
-        guess.inputs(:,ii) = auxdata.trackInterp.theta(guess.time);
-    end
+%     if ii == 3 % use track orientation as guess for xi
+%         guess.inputs(:,ii) = auxdata.trackInterp.theta(guess.time);
+%     end
 %     if ii == 6
 %         guess.inputs(:,ii) = 
 %     end
@@ -289,12 +289,11 @@ function stageCost=L_unscaled(x,xr,u,ur,p,t,data)
 
 auxdata = data.auxdata;
 n = x(:,2);
-xi = x(:,3);
-u = x(:,4);
-v = x(:,5);
+u = x(:,3);
+v = x(:,4);
 
 % stageCost = 0*t;
-stageCost = (1 - n.*auxdata.trackInterp.C(t))./(u.*cos(xi) - v.*sin(xi)); % ds/dt (dt/ds in Perantoni)
+stageCost = (1 - n.*auxdata.trackInterp.C(t))./u; % ds/dt (dt/ds in Perantoni)
 
 
 function boundaryCost=E_unscaled(x0,xf,u0,uf,p,t0,tf,data) 
