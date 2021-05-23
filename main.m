@@ -25,8 +25,22 @@ set(groot,'defaultAxesTickLabelInterpreter','latex');
 set(groot,'defaultLegendInterpreter','latex');
 
 %% 1. OPTIMAL CONTROL PROBLEM
-[problem,guess] = LTS; % Fetch the problem definition
-options = problem.settings(60); % Get options and solver settings. 60 -> h-method with N=60 nodes
+
+% 1. Use a previous problem as initializer
+init_flag = 1;
+
+if init_flag
+    run('LTS_05-02_SIMPLE_MODEL_V1/main');
+    solution0 = solution;
+    clearvars -except init_flag solution0; init_flag = 1; close all;
+else
+    solution0 = [];
+end
+
+% 2. Solve the problem
+N = 60;
+[problem,guess] = LTS(init_flag,solution0,N); % Fetch the problem definition
+options = problem.settings(N); % Get options and solver settings. 60 -> h-method with N=60 nodes
 [solution,MRHistory,data_initial,data_finalMR] = solveMyProblem(problem,guess,options); % Solve the OCP
 
 % [simulation.tv,simulation.xv,simulation.uv] = simulateSolution(problem,solution,'ode113'); % Check the model in open loop

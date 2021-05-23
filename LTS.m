@@ -1,4 +1,4 @@
-function [problem,guess] = LTS
+function [problem,guess] = LTS(init_flag,solution0,N)
 %% LTS
 % AUTHOR:
 % David Izquierdo
@@ -7,7 +7,8 @@ function [problem,guess] = LTS
 % Formulate the OCP problem
 % 
 % INPUTS:
-% (no inputs)
+% solution0: solution from the previous layer (the simpler model used to initialize this one)
+% N: number of iteration 1 mesh points
 %
 % OUTPUTS:
 % problem: Structure with information on the optimal control problem
@@ -146,17 +147,22 @@ problem.states.xfu = numericsInput(1:Nstates,14).';
 % 3.7 Guess the state trajectories with [t0 tf] and [x0 xf] or providing a reference time vector [t0:1:tf]
 ...and then zeros(size(guess.time)) -for example-
     
-guess.time(:,1) = linspace(t0,tf,100);
+guess.time(:,1) = linspace(t0,tf,N); % "N" used to match initial mesh
 % guess.states = numericsInput(1:Nstates,15:16).';
 
 % UPDATE MATLAB TO USE THIS % interpolant_guess_states= griddedInterpolant([t0 tf].',numericsInput(1:Nstates,15:16).');
 % guess.states = interpolant_guess_states(guess.time);
 for ii = 1:Nstates
     guess.states(:,ii) = interp1([t0 tf],numericsInput(ii,15:16),guess.time);
+    if init_flag && ii == 2
+        guess.states(:,ii) = speval(solution0,'X',1,guess.time); % n is the only state variable in 
+    end
+% 
 %     if ii == 3 % use track orientation as guess for xi
 %         guess.inputs(:,ii) = auxdata.trackInterp.theta(guess.time);
 %     end
 %     if ii == 6
+% 
 %         guess.inputs(:,ii) = 
 %     end
 end

@@ -44,7 +44,7 @@ function options = LTS_settings(varargin)
 % - Integral residual minimization method ('integral_res_min')
 options.transcription='direct_collocation';
 
-% Until line 55, only applies if using INTEGRATED RESIDUAL MINIMIZATION (it is not the case)
+% Until "options.resCostWeight", only applies if using INTEGRATED RESIDUAL MINIMIZATION (it is not the case)
 % Solution method for integrated residual minimization
 %---------------------------------------
 % - The alternating method ('alternating')          solving integrated residual minimization and objective minimization in an alternating scheme
