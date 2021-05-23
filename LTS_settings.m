@@ -152,14 +152,14 @@ options.NLPsolver='ipopt';
 
 % IPOPT settings (if required)
 %---------------------------------------
-options.ipopt.tol=1e-7; %1e-7;                        % Desired convergence tolerance (relative). The default value is  1e-8.
+options.ipopt.tol=1e-5; %1e-7;                        % Desired convergence tolerance (relative). The default value is  1e-8.
 % Determines the convergence tolerance for the algorithm. The algorithm terminates successfully, if the (scaled) NLP error becomes
 % smaller than this value, and if the (absolute) criteria according to "dual_inf_tol", "constr_viol_tol", and "compl_inf_tol" are met.
 % (This is epsilon_tol in Eqn. (6) in implementation paper). See also "acceptable_tol" as a second termination criterion. Note, some
 % other algorithmic features also use this quantity to determine thresholds etc.
 
 options.ipopt.print_level=5;                   % Print level. The valid range for this integer option is [0,12] and its default value is 5.
-options.ipopt.max_iter=200;                   % Maximum number of iterations. The default value is 3000.
+options.ipopt.max_iter=500;                   % Maximum number of iterations. The default value is 3000.
  
 options.ipopt.mu_strategy ='adaptive';         % Determines which barrier parameter update strategy is to be used. 
                                                % The default value for this string option is "monotone".
@@ -211,7 +211,8 @@ options.MRstrategy='aggressive';
 
 % Maximum number of mesh refinement iterations
 %---------------------------------------
-options.maxMRiter=50;
+maxMRiter=4;
+options.maxMRiter=maxMRiter-1; % For small values, it seems to allow one extra refinement with respect to the user value
 
 % Discountious Input
 %---------------------------------------
@@ -221,7 +222,7 @@ options.disContInputs=0;
 % Minimum and maximum time interval
 %---------------------------------------
 % Define the minimum and maximum time interval (in the same unit as in t) for the hp-flexible method and for mesh refinement schemes
-options.mintimeinterval=0.01; 
+options.mintimeinterval=1e-2; % 1e-2
 options.maxtimeinterval=inf; 
 
 % Distribution of integration steps. 

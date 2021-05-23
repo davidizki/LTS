@@ -61,7 +61,7 @@ numericsInput = numericsInput(1:Nvars,6:(6+Nfields-1)); % 6 is due to the first 
 % Track input
 trackInput = readmatrix('LTS_inputData.xlsx','sheet','trackInput'); %,'OutputType','string');
 trackInput = trackInput(:,2);
-auxdata.track_name = "Track04"; % Name of the folder (and the .txt file)
+auxdata.track_name = "Track03"; % Name of the folder (and the .txt file)
 auxdata.track_N = trackInput(1,1); % [m] semi-width -note that minimum TOTAL track width in FSG is 3 m-
 [auxdata.trackInterp, auxdata.trackData] = LTS_trackGenerator(auxdata.track_name,auxdata.track_N);
 
@@ -206,6 +206,7 @@ for ii = 1:Ncontrols
     guess.inputs(:,ii) = interp1([t0 tf],numericsInput(Nstates+ii,15:16),guess.time);
     if ii == 1 % use Ackermann as guess for delta
         guess.inputs(:,ii) = atan(auxdata.trackInterp.C(guess.time).*auxdata.w);
+        % Alternative: guess.inputs(:,ii) = auxdata.trackInterp.C(guess.time);
     end
 end
 
@@ -222,13 +223,18 @@ problem.setpoints.inputs=[];
 
 % Bounds for path constraint function gl =< g(x,u,p,t) =< gu
 % 6.1 EQUALITY CONSTRAINTS (no bounds, since it is just equality)
-problem.constraints.ng_eq = 2; % number of equality constraints
-problem.constraints.gTol_eq = [0 0];
+% problem.constraints.ng_eq = 2; % number of equality constraints
+% problem.constraints.gTol_eq = [0 0];
+problem.constraints.ng_eq = 0; % number of equality constraints
+problem.constraints.gTol_eq = [];
 
 % 6.2 INEQUALITY CONSTRAINTS
-problem.constraints.gl=[0 0 0]; % g cannot take values lower than zero
-problem.constraints.gu=[inf inf inf]; % one-sided constraints
-problem.constraints.gTol_neq=[1 1 1]; % tolerance for each g
+% problem.constraints.gl=[0 0 0]; % g cannot take values lower than zero
+% problem.constraints.gu=[inf inf inf]; % one-sided constraints
+% problem.constraints.gTol_neq=[1 1 1]; % tolerance for each g
+problem.constraints.gl=[]; % g cannot take values lower than zero
+problem.constraints.gu=[]; % one-sided constraints
+problem.constraints.gTol_neq=[]; % tolerance for each g
 
 % 6.3 BOUNDARY CONSTRAINTS
 % Bounds for boundary constraints bl =< b(x0,xf,u0,uf,p,t0,tf) =< bu

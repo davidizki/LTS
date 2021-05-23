@@ -18,7 +18,7 @@
 
 %% 0. MATLAB SETUP
 clear; clc; close all; format compact; % compact: lines in output are closer together
-addpath(genpath("trackGenerator_LTS")); % add path and all subfolders to MATLAB path
+addpath(genpath("LTS_trackGenerator")); % add path and all subfolders to MATLAB path
 set(0, 'DefaultFigureVisible', 'off')
 set(groot,'defaulttextinterpreter','latex'); % Set latex as interpreter (remember to use $ $)
 set(groot,'defaultAxesTickLabelInterpreter','latex');
@@ -26,10 +26,10 @@ set(groot,'defaultLegendInterpreter','latex');
 
 %% 1. OPTIMAL CONTROL PROBLEM
 [problem,guess] = LTS; % Fetch the problem definition
-options = problem.settings(200); % Get options and solver settings. 60 -> h-method with N=60 nodes
+options = problem.settings(60); % Get options and solver settings. 60 -> h-method with N=60 nodes
 [solution,MRHistory,data_initial,data_finalMR] = solveMyProblem(problem,guess,options); % Solve the OCP
 
-[simulation.tv,simulation.xv,simulation.uv] = simulateSolution(problem,solution,'ode113'); % Check the model in open loop
+% [simulation.tv,simulation.xv,simulation.uv] = simulateSolution(problem,solution,'ode113'); % Check the model in open loop
 
 %% 2. POST-PROCESSING
 % 1. Summary Messages
@@ -40,15 +40,15 @@ fprintf('        |  %d - # EVALUATIONS (of Lagrangian Hessian)\n',sum(MRHistory.
 
 % 2.a Plot-Variables (plotvar)
 plotvar.xx=linspace(solution.t0,solution.tf,1000).'; % "time" vector
-plotvar.x1=speval(solution,'X',1,plotvar.xx); % State 1
-plotvar.u1=speval(solution,'U',1,plotvar.xx); % Input 1
+plotvar.x1=speval(solution,'X',2,plotvar.xx); % Normal distance to centreline
+plotvar.u1=speval(solution,'U',1,plotvar.xx); % Steering angle
 
 % Rename variables
 plotvar.S = plotvar.xx; % At all points defined by linspace
 plotvar.N = plotvar.x1;
 plotvar.alpha = plotvar.u1;
 plotvar.S_mesh = solution.T; % Only at collocation points
-plotvar.N_mesh = solution.X;
+plotvar.N_mesh = solution.X(:,2);
 plotvar.N_mesh = plotvar.N_mesh(1:length(plotvar.S_mesh)); % If using hp methods, X is 1 item longer (repeats last element) than T
 plotvar.nodes_locations = cumsum(data_finalMR.options.tau);
 
@@ -59,7 +59,7 @@ plotparam.Fnames = strings;
 plotparam.Nnodes = length(data_finalMR.options.tau);
 plotparam.formattype = strcat('-dpng'); % .png
 plotparam.resolution = strcat('-r350'); % -fillpage. Increase the number for higher quality
-plotparam.showfigs = 0;
+plotparam.showfigs = 1;
 plotparam.savefigs = 0;
 
 if plotparam.showfigs || plotparam.savefigs % skip figures generation if no show & no save

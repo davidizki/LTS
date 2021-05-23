@@ -1,4 +1,4 @@
-function [dx,g_eq,g_neq] = LTS_dynamics(x,u,p,t,data)
+function [dx] = LTS_dynamics(x,u,p,t,data)
 %% LTS_dynamics
 % AUTHOR:
 % David Izquierdo
@@ -127,8 +127,12 @@ D = -1/2.*auxdata.rho.*auxdata.CdA.*(u.^2 + v.^2);
 % % % % 
 
 % REDUCED MODEL
-tyres.Fy_tot = delta.*(auxdata.W + Df).*auxdata.mux_2;
-tyres.Fx_tot = u_controls(:,2).*1e3;
+tyres.Fy_tot = cos(delta).*(auxdata.W + Df).*auxdata.mux_2.*6;
+tyres.Fx_tot = u_controls(:,2)./1e5;
+
+% Fx = min(max,asked) >> Smooth approximation of min() function
+% tyres.Fx_tot = -log(exp(-tyres.Fx_tot) + exp(-auxdata.Teng_max.*u./auxdata.R));
+tyres.Fx_tot = ((tyres.Fx_tot.^(-50))+((auxdata.Teng_max.*u./auxdata.R).^(-50))).^(-1/50);
 
 %% 2. EOMs - EQUATIONS OF MOTION
 % t_dot = (u.*cos(xi) - v.*sin(xi))./(1 - n.*auxdata.trackInterp.C(t)); % == 1/Sf == dt/ds (== ds/dt in Perantoni notation)
@@ -158,10 +162,10 @@ dvdt = v_dot.*Sf;
 
 
 %% 3. CONSTRAINTS
-h1 = tyres.Fx_tot - auxdata.Teng_max.*u./auxdata.R;
-h2 = -tyres.Fx_tot - auxdata.Fbrk_max;
+% h1 = tyres.Fx_tot - auxdata.Teng_max.*u./auxdata.R;
+% h2 = -tyres.Fx_tot - auxdata.Fbrk_max;
 
 %% 4. OUTPUTS
 dx = [dsdt dndt dudt dvdt];
-g_eq = [0 0].*refsize; % [0 0].*refsize; // [g1 g2];
-g_neq = [h1 h2 0.*refsize]; % [0 0 0].*refsize; // % [h1 h2 h3];
+% g_eq = [0 0].*refsize; % [0 0].*refsize; // [g1 g2];
+% g_neq = [0.*refsize 0.*refsize 0.*refsize]; % [0 0 0].*refsize; // % [h1 h2 h3];
